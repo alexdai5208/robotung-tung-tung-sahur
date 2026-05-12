@@ -1,0 +1,97 @@
+/*
+ * HC-SR04 example sketch
+ *
+ * https://create.arduino.cc/projecthub/Isaac100/getting-started-with-the-hc-sr04-ultrasonic-sensor-036380
+ *
+ * by Isaac100
+ */
+
+#include <ESP32Servo.h>
+
+// global variables for base servo stuff
+Servo myservo;  
+// create Servo object to control a servo
+// twelve Servo objects can be created on most boards
+
+// variable to store the servo position
+int pos = 0;    
+bool clockwise = true;
+bool toggle = false;
+const int servoPin = 9;
+const int buttonPin = 14;
+
+// global variables for ultrasonic sensor stuff
+const int trigPin = 39;
+const int echoPin = 40;
+const int LOW_RANGE = 35;
+const int HIGH_RANGE = 55;
+
+// baud for something
+const int BAUD = 9600;
+
+float duration, distance; 
+
+int num_detections = 0;
+
+void setup() {
+  // base servo setup
+  myservo.attach(servoPin);  // attaches the servo on pin 9 to the Servo object
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  // ultrasonic sensor setup
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // starts idk
+  Serial.begin(BAUD); // 9600 baud
+}
+
+void loop() {
+  // needs certain num of detections per interval to make sure detection is valid 
+  while (num_detections < 8) {
+    // base servo code to search for objects
+    // turns base if it doesn't initally detect something before
+    if (num_detections == 0) {
+      // sets servo direction of movement based on current servo orientation
+      if (pos <= 0) clockwise = true;
+      else if (pos >= 180) clockwise = false;
+
+      if (clockwise) pos++;
+      else pos--;
+
+      myservo.write(pos);
+      delay(15);
+
+      // reads whether button was pressed
+      // if pressed, exists loop
+      int switchState = digitalRead(buttonPin);
+      if (switchState == LOW) {
+        toggle = false;
+        delay(150);
+      }  
+    }
+
+    // ultrasonic sensor code to detect item in range
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+
+    // math to detect distance
+    duration = pulseIn(echoPin, HIGH);
+    distance = (duration*.0343)/2;
+    
+    // detect object within specified range and time
+    if (distance >= LOW_RANGE && distance <= HIGH_RANGE) num_detections++;
+    else num_detections = 0;
+
+    Serial.print("Distance: ");
+    Serial.println(distance);
+    Serial.println("Num Detections: ");
+    Serial.println(num_detections);
+    delay(100);
+  }
+
+  num_detections = 0;
+}

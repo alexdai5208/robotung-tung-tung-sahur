@@ -17,12 +17,11 @@ Servo myservo;
 int pos = 0;    
 bool clockwise = true;
 bool toggle = false;
-const int servoPin = 9;
-const int buttonPin = 14;
+const int servoPin1 = 4;
 
 // global variables for ultrasonic sensor stuff
-const int trigPin = 39;
-const int echoPin = 40;
+const int trigPin = 16;
+const int echoPin = 17;
 const int LOW_RANGE = 35;
 const int HIGH_RANGE = 55;
 
@@ -35,8 +34,7 @@ int num_detections = 0;
 
 void setup() {
   // base servo setup
-  myservo.attach(servoPin);  // attaches the servo on pin 9 to the Servo object
-  pinMode(buttonPin, INPUT_PULLUP);
+  myservo.attach(servoPin1);  // attaches the servo on pin 9 to the Servo object
 
   // ultrasonic sensor setup
   pinMode(trigPin, OUTPUT);
@@ -61,14 +59,6 @@ void loop() {
 
       myservo.write(pos);
       delay(15);
-
-      // reads whether button was pressed
-      // if pressed, exists loop
-      int switchState = digitalRead(buttonPin);
-      if (switchState == LOW) {
-        toggle = false;
-        delay(150);
-      }  
     }
 
     // ultrasonic sensor code to detect item in range

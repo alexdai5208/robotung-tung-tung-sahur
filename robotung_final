@@ -17,13 +17,13 @@ Servo myservo;
 int pos = 0;    
 bool clockwise = true;
 bool toggle = false;
-const int servoPin1 = 4;
+const int servoPin1 = 3;
 
 // global variables for ultrasonic sensor stuff
 const int trigPin = 16;
 const int echoPin = 17;
-const int LOW_RANGE = 35;
-const int HIGH_RANGE = 55;
+const int LOW_RANGE = 15;
+const int HIGH_RANGE = 30;
 
 // baud for something
 const int BAUD = 9600;
@@ -54,11 +54,11 @@ void loop() {
       if (pos <= 0) clockwise = true;
       else if (pos >= 180) clockwise = false;
 
-      if (clockwise) pos++;
-      else pos--;
+      if (clockwise) pos += 5;
+      else pos -= 5;
 
       myservo.write(pos);
-      delay(15);
+      delay(10);
     }
 
     // ultrasonic sensor code to detect item in range
@@ -80,7 +80,7 @@ void loop() {
     Serial.println(distance);
     Serial.println("Num Detections: ");
     Serial.println(num_detections);
-    delay(100);
+    delay(200);
   }
 
   num_detections = 0;

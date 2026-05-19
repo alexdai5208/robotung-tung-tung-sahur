@@ -8,8 +8,11 @@
 
 #include <ESP32Servo.h>
 
-// global variables for base servo stuff
-Servo myservo;  
+// global variables for servo stuff
+Servo baseServo;
+Servo verticalServo;
+Servo clawServo;
+
 // create Servo object to control a servo
 // twelve Servo objects can be created on most boards
 
@@ -17,7 +20,9 @@ Servo myservo;
 int pos = 0;    
 bool clockwise = true;
 bool toggle = false;
-const int servoPin1 = 4;
+const int baseServoPin = 3;
+const int verticalServoPin = 2;
+const int clawServoPin = 4;
 
 // global variables for ultrasonic sensor stuff
 const int trigPin = 16;
@@ -34,7 +39,9 @@ int num_detections = 0;
 
 void setup() {
   // base servo setup
-  myservo.attach(servoPin1);  // attaches the servo on pin 9 to the Servo object
+  baseServo.attach(baseServoPin);  // attaches the servo on baseServoPin to the Servo object
+  verticalServo.attach(verticalServoPin);  // attaches the servo on baseServoPin to the Servo object
+  clawServo.attach(clawServoPin);  // attaches the servo on baseServoPin to the Servo object
 
   // ultrasonic sensor setup
   pinMode(trigPin, OUTPUT);
@@ -57,8 +64,10 @@ void loop() {
       if (clockwise) pos++;
       else pos--;
 
-      myservo.write(pos);
-      delay(15);
+      baseServo.write(pos);
+      verticalServo.write(pos);
+      clawServo.write(pos);
+      delay(20);
     }
 
     // ultrasonic sensor code to detect item in range
@@ -80,7 +89,7 @@ void loop() {
     Serial.println(distance);
     Serial.println("Num Detections: ");
     Serial.println(num_detections);
-    delay(100);
+    delay(200);
   }
 
   num_detections = 0;

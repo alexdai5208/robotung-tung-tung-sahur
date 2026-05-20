@@ -7,14 +7,15 @@
  */
 
 #include <ESP32Servo.h>
-#include <XboxSeriesXControllerESP32_asukiaaa.hpp>
+// #include <BLEGamepadClient.h>
+
+// XboxController controller;
 
 // global variables for base servo stuff
 Servo baseServo;
 Servo verticalServo;
 Servo clawServo;
 
-XboxSeriesXControllerESP32_asukiaaa::Core xboxController;
 // create Servo object to control a servo
 // twelve Servo objects can be created on most boards
 
@@ -56,10 +57,9 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  // starts idk
   // Serial.begin(BAUD);  // 9600 baud
   Serial.begin(115200);
-  // xboxController.begin();
+  // controller.begin();
 }
 
 void loop() {
@@ -102,20 +102,40 @@ void loop() {
     }
 
     num_detections = 0;
-  }else if (Serial.available() > 0) {
+  } else if (Serial.available() > 0) {
     char command = Serial.read();
 
     if (command == 'a') {
-      basePos-=5;
+      basePos -= 5;
       Serial.println("A pressed turning left 5 degrees!");
-    }else if (command == 'd') {
-      basePos+=5;
+    } else if (command == 'd') {
+      basePos += 5;
       Serial.println("D pressed turning right 5 degrees!");
-    }else if (command == 's') {
-      verticalPos-=5;
-    }else if (command == 'w') {
-      verticalPos +=5;
+    } else if (command == 's') {
+      verticalPos -= 5;
+    } else if (command == 'w') {
+      verticalPos += 5;
     }
+  } 
+  // else if (controller.isConnected()) {
+  //   XboxControlsState s;
+  //   controller.read(&s);
+
+  //   Serial.printf("lstick: %.2f,%.2f, rstick: %.2f,%.2f\n",
+  //                 s.leftStickX, s.leftStickY, s.rightStickX, s.rightStickY);
+  //   delay(100);
+  // }
+
+  if (basePos < 0) {
+    basePos = 0;
+  }else if (basePos > 180) {
+    basePos = 180;
+  }
+
+  if (verticalPos > 180) {
+    verticalPos = 180;
+  }else if (verticalPos < 95) {
+    verticalPos = 95;
   }
 
   baseServo.write(basePos);

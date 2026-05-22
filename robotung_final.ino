@@ -1,11 +1,3 @@
-/*
- * HC-SR04 example sketch
- *
- * https://create.arduino.cc/projecthub/Isaac100/getting-started-with-the-hc-sr04-ultrasonic-sensor-036380
- *
- * by Isaac100
- */
-
 #include <ESP32Servo.h>
 // #include <BLEGamepadClient.h>
 
@@ -24,11 +16,13 @@ int basePos = 0;
 bool clockwise = true;
 bool toggle = false;
 
+bool change = false;
+
 bool automatic = false;
 
-const int baseServoPin = 3;
-const int verticalServoPin = 2;
-const int clawServoPin = 4;
+const int baseServoPin = 6;
+const int verticalServoPin = 5;
+const int clawServoPin = 8;
 
 // 95 to 180 is the degrees 180 is straight up
 int verticalPos = 180;
@@ -49,9 +43,9 @@ int num_detections = 0;
 
 void setup() {
   // base servo setup
-  baseServo.attach(baseServoPin);          // attaches the servo on baseServoPin to the Servo object
-  verticalServo.attach(verticalServoPin);  // attaches the servo on baseServoPin to the Servo object
-  clawServo.attach(clawServoPin);          // attaches the servo on baseServoPin to the Servo object
+  baseServo.attach(baseServoPin);
+  verticalServo.attach(verticalServoPin);
+  clawServo.attach(clawServoPin);
 
   // ultrasonic sensor setup
   pinMode(trigPin, OUTPUT);
@@ -59,7 +53,6 @@ void setup() {
 
   // Serial.begin(BAUD);  // 9600 baud
   Serial.begin(115200);
-  // controller.begin();
 }
 
 void loop() {
@@ -104,6 +97,10 @@ void loop() {
     num_detections = 0;
   } else if (Serial.available() > 0) {
     char command = Serial.read();
+    change = true;
+
+    Serial.print("Command received: ");
+    Serial.println(command);
 
     if (command == 'a') {
       basePos -= 5;
@@ -113,31 +110,45 @@ void loop() {
       Serial.println("D pressed turning right 5 degrees!");
     } else if (command == 's') {
       verticalPos -= 5;
+      Serial.println("S pressed moving vertical down!");
     } else if (command == 'w') {
       verticalPos += 5;
+      Serial.println("W pressed moving vertical up!");
+    } else if (command == 'c') {
+      clawPos = 90;
+      Serial.println("C pressed closing claw!");
+    } else if (command == 'o') {
+      clawPos = 0;
+      Serial.println("O pressed opening claw!");
     }
-  } 
-  // else if (controller.isConnected()) {
-  //   XboxControlsState s;
-  //   controller.read(&s);
-
-  //   Serial.printf("lstick: %.2f,%.2f, rstick: %.2f,%.2f\n",
-  //                 s.leftStickX, s.leftStickY, s.rightStickX, s.rightStickY);
-  //   delay(100);
-  // }
+  }
 
   if (basePos < 0) {
     basePos = 0;
-  }else if (basePos > 180) {
+  } else if (basePos > 180) {
     basePos = 180;
   }
 
   if (verticalPos > 180) {
     verticalPos = 180;
-  }else if (verticalPos < 95) {
+  } else if (verticalPos < 95) {
     verticalPos = 95;
   }
 
-  baseServo.write(basePos);
-  verticalServo.write(verticalPos);
+  if (clawPos < 0) {
+    clawPos = 0;
+  } else if (clawPos > 180) {
+    clawPos = 180;
+  }
+
+  if (change) {
+    baseServo.write(basePos);
+    verticalServo.write(verticalPos);
+    clawServo.write(clawPos);
+    Serial.printf("Base value is %d", basePos);
+    Serial.printf("Vertical value is %d", verticalPos);
+    Serial.printf("Claw value is %d", clawPos);
+    change = false;
+  }
+  
 }

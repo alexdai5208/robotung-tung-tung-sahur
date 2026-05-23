@@ -153,14 +153,27 @@ void loop() {
     clawPos = 180;
   }
 
+  // Update Servos based ONLY on the command received
   if (change) {
-    baseServo.write(basePos);
-    verticalServo.write(verticalPos);
-    clawServo.write(clawPos);
-    Serial.printf("Base value is %d", basePos);
-    Serial.printf("Vertical value is %d", verticalPos);
-    Serial.printf("Claw value is %d", clawPos);
+    if (command == 'a' || command == 'd') {
+      if (basePos < 0) basePos = 0;
+      else if (basePos > 180) basePos = 180;
+      baseServo.write(basePos);
+    } 
+    else if (command == 'w' || command == 's') {
+      if (verticalPos > 180) verticalPos = 180;
+      else if (verticalPos < 95) verticalPos = 95;
+      verticalServo.write(verticalPos);
+    } 
+    else if (command == 'c' || command == 'o') {
+      if (clawPos < 0) clawPos = 0;
+      else if (clawPos > 180) clawPos = 180;
+      clawServo.write(clawPos);
+    }
+    
+    Serial.printf("Base: %d, Vert: %d, Claw: %d\n", basePos, verticalPos, clawPos);
     change = false;
   }
+}
   
 }

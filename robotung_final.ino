@@ -11,13 +11,11 @@ Servo clawServo;
 // create Servo object to control a servo
 // twelve Servo objects can be created on most boards
 
-// variable to store the servo basePosition
+// variables
 int basePos = 0;
 bool clockwise = true;
 bool toggle = false;
-
 bool change = false;
-
 bool automatic = false;
 
 const int baseServoPin = 6;
@@ -42,6 +40,21 @@ float duration, distance;
 int num_detections = 0;
 
 void setup() {
+  Serial.begin(115200);
+  
+  // --- FIX FOR ISSUE 3: TIMER ALLOCATION ---
+  // Allocate hardware timers to prevent signal overlap
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
+  // Set standard PWM frequency for servos (50Hz)
+  baseServo.setPeriodHertz(50);
+  verticalServo.setPeriodHertz(50);
+  clawServo.setPeriodHertz(50);
+  // -----------------------------------------
+
   // base servo setup
   baseServo.attach(baseServoPin);
   verticalServo.attach(verticalServoPin);
@@ -52,7 +65,6 @@ void setup() {
   pinMode(echoPin, INPUT);
 
   // Serial.begin(BAUD);  // 9600 baud
-  Serial.begin(115200);
 }
 
 void loop() {

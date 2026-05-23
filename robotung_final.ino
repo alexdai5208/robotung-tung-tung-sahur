@@ -1,15 +1,12 @@
 #include <ESP32Servo.h>
-// #include <BLEGamepadClient.h>
+#include <Bluepad32.h>
 
-// XboxController controller;
+ControllerPtr controller = nullptr;
 
 // global variables for base servo stuff
 Servo baseServo;
 Servo verticalServo;
 Servo clawServo;
-
-// create Servo object to control a servo
-// twelve Servo objects can be created on most boards
 
 // variable to store the servo basePosition
 int basePos = 0;
@@ -18,28 +15,35 @@ bool toggle = false;
 
 bool change = false;
 
-bool automatic = false;
-
-const int baseServoPin = 6;
-const int verticalServoPin = 5;
-const int clawServoPin = 8;
+const int baseServoPin = 18;
+const int verticalServoPin = 19;
+const int clawServoPin = 21;
 
 // 95 to 180 is the degrees 180 is straight up
 int verticalPos = 180;
 int clawPos = 0;
 
 // global variables for ultrasonic sensor stuff
-const int trigPin = 16;
-const int echoPin = 17;
-const int LOW_RANGE = 15;
-const int HIGH_RANGE = 30;
-
-// baud for something
-const int BAUD = 9600;
+const int trigPin = 23;
+const int echoPin = 22;
+const int LOW_RANGE = 5;
+const int HIGH_RANGE = 13;
 
 float duration, distance;
 
 int num_detections = 0;
+
+void onConnectedController(ControllerPtr ctl) {
+  controller = ctl;
+  Serial.println("Controller connected!");
+}
+
+void onDisconnectedController(ControllerPtr ctl) {
+  if (controller == ctl) {
+    controller = nullptr;
+    Serial.println("Controller disconnected.");
+  }
+}
 
 void setup() {
   // base servo setup
@@ -51,26 +55,27 @@ void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  // Serial.begin(BAUD);  // 9600 baud
   Serial.begin(115200);
+  BP32.setup(&onConnectedController, &onDisconnectedController);
 }
 
 void loop() {
-  if (automatic) {
-    while (num_detections < 8) {
-      // base servo code to search for objects
-      // turns base if it doesn't initally detect something before
-      if (num_detections == 0) {
-        // sets servo direction of movement based on current servo orientation
-        if (basePos <= 0) clockwise = true;
-        else if (basePos >= 180) clockwise = false;
+  BP32.update();
 
+  if (!controller || !controller->isConnected()) return;
+
+  if (controller->a()) {
+    if (num_detections < 5) {
+      if (basePos <= 0) clockwise = true;
+      else if (basePos >= 180) clockwise = false;
+
+      if (num_detections == 0) {
+        change = true;
         if (clockwise) basePos += 5;
         else basePos -= 5;
-
-        baseServo.write(basePos);
-        delay(10);
       }
+
+      delay(100);
 
       // ultrasonic sensor code to detect item in range
       digitalWrite(trigPin, LOW);
@@ -87,15 +92,55 @@ void loop() {
       if (distance >= LOW_RANGE && distance <= HIGH_RANGE) num_detections++;
       else num_detections = 0;
 
-      Serial.print("Distance: ");
-      Serial.println(distance);
-      Serial.println("Num Detections: ");
-      Serial.println(num_detections);
-      delay(200);
+      if (num_detections > 0) {
+        Serial.print("Distance: ");
+        Serial.println(distance);
+        Serial.println("Num Detections: ");
+        Serial.println(num_detections);
+      }
+    } else {
+      delay(1000);
+
+      clawPos = 0;
+      verticalPos = 95;
+
+      verticalServo.write(verticalPos);
+      clawServo.write(clawPos);
+
+      delay(1000);
+
+      clawPos = 85;
+      clawServo.write(clawPos);
+
+      delay(2000);
+
+      verticalPos = 180;
+      verticalServo.write(verticalPos);
+
+      delay(2000);
+    }
+  }else {
+    int rx = controller->axisRX();
+    int ly = controller->axisY();
+    if (rx > 10 || rx < -10) {
+      change = true;
+    }else if (ly >10 || ly < -10) {
+      change = true;
     }
 
-    num_detections = 0;
-  } else if (Serial.available() > 0) {
+    basePos += (rx / 100);
+    verticalPos += (ly /100);
+
+    if (controller->y()) {
+      clawPos = 85;
+      change = true;
+    }else if (controller->x()) {
+      clawPos = 0;
+      change = true;
+    }
+  }
+
+  if (Serial.available() > 0) {
     char command = Serial.read();
     change = true;
 
@@ -103,10 +148,10 @@ void loop() {
     Serial.println(command);
 
     if (command == 'a') {
-      basePos -= 5;
+      basePos += 5;
       Serial.println("A pressed turning left 5 degrees!");
     } else if (command == 'd') {
-      basePos += 5;
+      basePos -= 5;
       Serial.println("D pressed turning right 5 degrees!");
     } else if (command == 's') {
       verticalPos -= 5;
@@ -120,6 +165,14 @@ void loop() {
     } else if (command == 'o') {
       clawPos = 0;
       Serial.println("O pressed opening claw!");
+    } else if (command == 'z') {
+      // automatic = true;
+      change = true;
+      clawPos = 0;
+      verticalPos = 180;
+      basePos = 0;
+      num_detections = 0;
+      Serial.println("Z pressed opening claw!");
     }
   }
 
@@ -137,18 +190,18 @@ void loop() {
 
   if (clawPos < 0) {
     clawPos = 0;
-  } else if (clawPos > 180) {
-    clawPos = 180;
+  } else if (clawPos > 90) {
+    clawPos = 90;
   }
 
   if (change) {
-    baseServo.write(basePos);
+    if (abs(basePos - baseServo.read()) > 2) {
+      baseServo.write(basePos);
+    }
     verticalServo.write(verticalPos);
     clawServo.write(clawPos);
-    Serial.printf("Base value is %d", basePos);
-    Serial.printf("Vertical value is %d", verticalPos);
-    Serial.printf("Claw value is %d", clawPos);
     change = false;
   }
-  
+
+  delay(50);
 }

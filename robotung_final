@@ -1,11 +1,3 @@
-/*
- * HC-SR04 example sketch
- *
- * https://create.arduino.cc/projecthub/Isaac100/getting-started-with-the-hc-sr04-ultrasonic-sensor-036380
- *
- * by Isaac100
- */
-
 #include <ESP32Servo.h>
 
 // global variables for servo stuff
@@ -13,84 +5,74 @@ Servo baseServo;
 Servo verticalServo;
 Servo clawServo;
 
-// create Servo object to control a servo
-// twelve Servo objects can be created on most boards
-
-// variable to store the servo position
-int pos = 0;    
-bool clockwise = true;
-bool toggle = false;
-const int baseServoPin = 3;
-const int verticalServoPin = 2;
-const int clawServoPin = 4;
+// SAFE PINS for ESP32
+// Pin 3 is RX0 (Serial) and Pin 2 is the onboard LED. Do not use them for servos!
+const int baseServoPin = 12;
+const int verticalServoPin = 14;
+const int clawServoPin = 27;
 
 // global variables for ultrasonic sensor stuff
 const int trigPin = 16;
 const int echoPin = 17;
-const int LOW_RANGE = 35;
-const int HIGH_RANGE = 55;
-
-// baud for something
-const int BAUD = 9600;
-
-float duration, distance; 
-
-int num_detections = 0;
 
 void setup() {
+  Serial.begin(9600);
+
+  // Allocate hardware timers to ensure this is purely a HARDWARE test, 
+  // not a software glitch overlapping the signals.
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
+  baseServo.setPeriodHertz(50);
+  verticalServo.setPeriodHertz(50);
+  clawServo.setPeriodHertz(50);
+
   // base servo setup
-  baseServo.attach(baseServoPin);  // attaches the servo on baseServoPin to the Servo object
-  verticalServo.attach(verticalServoPin);  // attaches the servo on baseServoPin to the Servo object
-  clawServo.attach(clawServoPin);  // attaches the servo on baseServoPin to the Servo object
+  baseServo.attach(baseServoPin);
+  verticalServo.attach(verticalServoPin);
+  clawServo.attach(clawServoPin);
 
   // ultrasonic sensor setup
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
 
-  // starts idk
-  Serial.begin(BAUD); // 9600 baud
+  Serial.println("--- STARTING SERVO OVERLOAD TEST ---");
+  delay(2000); // Give you 2 seconds to open the Serial Monitor
 }
 
 void loop() {
-  // needs certain num of detections per interval to make sure detection is valid 
-  while (num_detections < 8) {
-    // base servo code to search for objects
-    // turns base if it doesn't initally detect something before
-    if (num_detections == 0) {
-      // sets servo direction of movement based on current servo orientation
-      if (pos <= 0) clockwise = true;
-      else if (pos >= 180) clockwise = false;
-
-      if (clockwise) pos++;
-      else pos--;
-
-      baseServo.write(pos);
-      verticalServo.write(pos);
-      clawServo.write(pos);
-      delay(20);
-    }
-
-    // ultrasonic sensor code to detect item in range
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
-
-    // math to detect distance
-    duration = pulseIn(echoPin, HIGH);
-    distance = (duration*.0343)/2;
-    
-    // detect object within specified range and time
-    if (distance >= LOW_RANGE && distance <= HIGH_RANGE) num_detections++;
-    else num_detections = 0;
-
-    Serial.print("Distance: ");
-    Serial.println(distance);
-    Serial.println("Num Detections: ");
-    Serial.println(num_detections);
-    delay(200);
+  // 1. AGGRESSIVE SWEEP OUT
+  // Moving in increments of 5 degrees with a short delay draws heavy current
+  for (int pos = 0; pos <= 180; pos += 5) {
+    baseServo.write(pos);
+    verticalServo.write(180 - pos); // Opposing movement!
+    clawServo.write(pos);
+    delay(250);
   }
 
-  num_detections = 0;
+  // 2. SENSOR HEARTBEAT CHECK
+  // If the board lost power during the sweep, it will never reach this code
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  float duration = pulseIn(echoPin, HIGH);
+  float distance = (duration * .0343) / 2;
+
+  Serial.print("Sweep Out Complete. Sensor Distance: ");
+  Serial.println(distance);
+
+  // 3. AGGRESSIVE SWEEP IN
+  for (int pos = 180; pos >= 0; pos -= 5) {
+    baseServo.write(pos);
+    verticalServo.write(180 - pos);
+    clawServo.write(pos);
+    delay(250);
+  }
+
+  Serial.println("Sweep In Complete. If this prints, your power supply is strong enough!\n");
 }
